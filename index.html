@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Voynich Universal Typology Suite</title>
+    <style>
+        :root {
+            --bg-base: #0f0f11;
+            --bg-surface: #16161a;
+            --bg-card: #1d1d24;
+            --border: #2a2a35;
+            --text-main: #e4e4eb;
+            --text-muted: #8e8e9f;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --structural: #a855f7;
+            --semantic: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            margin: 0;
+            padding: 12px;
+            box-sizing: border-box;
+            line-height: 1.5;
+        }
+
+        .nav-container {
+            position: sticky;
+            top: 0;
+            background-color: var(--bg-base);
+            z-index: 100;
+            padding: 4px 0 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-surface);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 4px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+            min-width: 90px;
+        }
+
+        .tab-btn.active {
+            background: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .panel-container {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .panel-container.active { display: flex; }
+
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        h2, h3 {
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 1rem;
+        }
+        h3 { font-size: 0.8rem; color: var(--text-muted); }
+
+        textarea, select, input {
+            width: 100%;
+            background-color: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            outline: none;
+        }
+        textarea { height: 100px; resize: vertical; }
+
+        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        button.action {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+        }
+        button.sec { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); }
+
+        .interlinear-scroll-area {
+            max-height: 380px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-base);
+            padding: 4px;
+        }
+
+        .interlinear-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            padding: 8px 4px;
+            align-items: stretch;
+        }
+
+        .word-unit {
+            padding: 8px;
+            background: var(--bg-surface);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            word-break: break-all;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: center;
+        }
+
+        .chip {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin: 2px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        .chip.match { background: rgba(16, 185, 129, 0.15); border: 1px solid var(--semantic); color: #6ee7b7; }
+        .chip.raw { background: rgba(168, 85, 247, 0.12); border: 1px solid var(--structural); color: #d8b4fe; }
+
+        .dict-entry-row {
+            display: grid;
+            grid-template-columns: 100px 1fr auto;
+            gap: 8px;
+            align-items: center;
+            background: var(--bg-base);
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 0.85rem; text-align: left; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        th { background-color: var(--bg-surface); cursor: pointer; user-select: none; color: var(--text-muted); }
+
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+        .metric-badge { background: var(--bg-surface); padding: 12px; border-radius: 6px; border: 1px solid var(--border); text-align: center; }
+        .metric-val { font-size: 1.2rem; font-weight: bold; color: var(--structural); }
+        .metric-val.sem { color: var(--semantic); }
+        .metric-lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <div class="nav-container">
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchPanel('structuralPanel', this)">Structural</button>
+            <button class="tab-btn" onclick="switchPanel('semanticPanel', this)">Semantic</button>
+            <button class="tab-btn" onclick="switchPanel('topologyPanel', this)">Typology</button>
+        </div>
+        <div class="card" style="margin-top: 10px; padding: 10px; flex-direction: row; justify-content: space-between; align-items: center;">
+            <h3 style="margin:0;">Project Context Session</h3>
+            <div class="btn-row" style="flex-wrap: nowrap;">
+                <button class="action sec" style="padding: 6px 12px; font-size: 0.8rem;" onclick="exportProject()">Export</button>
+                <button class="action sec" style="padding: 6px 12px; font-size: 0.8rem;" onclick="document.getElementById('fileLoadTrigger').click()">Load</button>
+            </div>
+            <input type="file" id="fileLoadTrigger" style="display: none;" onchange="loadProject(event)">
+        </div>
+    </div>
+
+    <div id="structuralPanel" class="panel-container active">
+        <div class="card">
+            <h2>Raw Corpus Ingestion</h2>
+            <textarea id="corpusInput" placeholder="Paste clean, space-separated tokens here..."></textarea>
+            <div class="btn-row">
+                <select id="sectionTagSelect" style="flex: 1;">
+                    <option value="Unknown">Section: Unknown</option>
+                    <option value="Botanical">Botanical</option>
+                    <option value="Balneological">Balneological</option>
+                    <option value="Pharmaceutical">Pharmaceutical</option>
+                </select>
+                <button class="action" onclick="runStructuralPipeline()">Parse Morphological Grid</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Volumetric Matrix Summary</h2>
+            <div class="metric-grid">
+                <div class="metric-badge"><div class="metric-val" id="statTotalWords">0</div><div class="metric-lbl">Tokens</div></div>
+                <div class="metric-badge"><div class="metric-val" id="statUniqueWords">0</div><div class="metric-lbl">Unique</div></div>
+                <div class="metric-badge"><div class="metric-val" id="statTTR">0.00</div><div class="metric-lbl">TTR Ratio</div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Positional Cluster Discovery Matrix</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <input type="number" id="minClusterLen" value="3" title="Min Length">
+                <input type="text" id="clusterTableSearch" placeholder="Filter strings..." oninput="renderClusterMatrix()">
+            </div>
+            <div class="table-wrap">
+                <table id="clusterMatrixTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('clusterMatrixTable', 0)">Cluster</th>
+                            <th onclick="sortTable('clusterMatrixTable', 1, true)">Initial</th>
+                            <th onclick="sortTable('clusterMatrixTable', 2, true)">Internal</th>
+                            <th onclick="sortTable('clusterMatrixTable', 3, true)">Final</th>
+                            <th onclick="sortTable('clusterMatrixTable', 4, true)">Gross</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="semanticPanel" class="panel-container">
+        <div class="card">
+            <h2>Abstract Typology Dictionary Editor</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                <input type="text" id="newDictKey" placeholder="Cluster Key (e.g., d)">
+                <input type="text" id="newDictVal" placeholder="Typology Code (e.g., Cat_1)">
+            </div>
+            <div class="btn-row">
+                <button class="action" onclick="addDictionaryMapping()">Lock Typology Class</button>
+            </div>
+            <div id="dictionaryEditorGrid" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="card">
+            <h2>Live Recovery Key (Copy/Paste Backup)</h2>
+            <textarea id="recoveryJSONBox" placeholder='JSON payload state values...'></textarea>
+            <div class="btn-row">
+                <button class="action sec" onclick="copyRecoverySnippet()">Copy Snippet</button>
+                <button class="action sec" onclick="loadRecoverySnippet()">Restore Backup</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Interlinear Typology Matrix</h2>
+            <div class="interlinear-scroll-area" id="interlinearContainer"></div>
+        </div>
+    </div>
+
+    <div id="topologyPanel" class="panel-container">
+        <div class="card">
+            <h2>Master Typology Schema</h2>
+            <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">
+                Displays the absolute collection of all defined structural categories and suffix markers as a whole, organized serially regardless of input text presence.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                <input type="text" id="ledgerSearchInput" placeholder="Filter defined typology definitions..." oninput="renderMasterTopologyLedger()">
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Serial Classification Ledger Matrix</h2>
+            <div class="interlinear-scroll-area" id="topologyLedgerContainer">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        let corpusTokens = [];
+        let clusterDatabase = {};
+        
+        let projectDictionary = {
+            'd': 'Cat_1',
+            'qo': 'Cat_2',
+            'an': 'A1',
+            'ain': 'A2',
+            'aiin': 'A3',
+            'aiiin': 'A4'
+        };
+
+        function switchPanel(panelId, activeBtn) {
+            document.querySelectorAll('.panel-container').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+            activeBtn.classList.add('active');
+            
+            if (panelId === 'semanticPanel') refreshSemanticDashboard();
+            if (panelId === 'topologyPanel') renderMasterTopologyLedger();
+        }
+
+        function runStructuralPipeline() {
+            const rawText = document.getElementById('corpusInput').value;
+            const currentSection = document.getElementById('sectionTagSelect').value;
+            if (!rawText.trim()) return;
+
+            const rawWords = rawText.split(/\s+/).filter(w => w.length > 0);
+            corpusTokens = rawWords.map(w => ({ word: w, section: currentSection }));
+
+            document.getElementById('statTotalWords').textContent = corpusTokens.length;
+            const uniqueSet = new Set(corpusTokens.map(t => t.word));
+            document.getElementById('statUniqueWords').textContent = uniqueSet.size;
+            document.getElementById('statTTR').textContent = corpusTokens.length > 0 ? (uniqueSet.size / corpusTokens.length).toFixed(2) : "0.00";
+
+            discoverClusters();
+        }
+
+        function discoverClusters() {
+            const minLen = parseInt(document.getElementById('minClusterLen').value) || 3;
+            clusterDatabase = {};
+
+            corpusTokens.forEach(tokenObj => {
+                const word = tokenObj.word;
+                const len = word.length;
+                if (len < minLen) return;
+
+                const uniqueSubstrings = new Set();
+                for (let i = 0; i <= len - minLen; i++) {
+                    for (let j = i + minLen; j <= len; j++) {
+                        uniqueSubstrings.add(word.substring(i, j));
+                    }
+                }
+
+                uniqueSubstrings.forEach(sub => {
+                    if (!clusterDatabase[sub]) {
+                        clusterDatabase[sub] = { initial: 0, middle: 0, final: 0, total: 0 };
+                    }
+                    const firstIdx = word.indexOf(sub);
+                    const lastIdx = word.lastIndexOf(sub);
+                    
+                    let isInitial = (firstIdx === 0);
+                    let isFinal = (lastIdx + sub.length === len);
+                    let isMiddle = !isInitial && !isFinal;
+
+                    if (isInitial) clusterDatabase[sub].initial++;
+                    if (isFinal) clusterDatabase[sub].final++;
+                    if (isMiddle) clusterDatabase[sub].middle++;
+                    clusterDatabase[sub].total++;
+                });
+            });
+            renderClusterMatrix();
+        }
+
+        function renderClusterMatrix() {
+            const search = document.getElementById('clusterTableSearch').value.toLowerCase();
+            const tbody = document.querySelector('#clusterMatrixTable tbody');
+            tbody.innerHTML = '';
+
+            Object.entries(clusterDatabase)
+                .filter(([sub]) => sub.toLowerCase().includes(search))
+                .sort((a,b) => b[1].total - a[1].total).slice(0, 50)
+                .forEach(([sub, data]) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td><strong>${sub}</strong></td><td>${data.initial}</td><td>${data.middle}</td><td>${data.final}</td><td>${data.total}</td>`;
+                    tbody.appendChild(tr);
+                });
+        }
+
+        function refreshSemanticDashboard() {
+            renderDictionaryGrid();
+            executeInterlinearSubstitution();
+            updateRecoveryBox();
+        }
+
+        function renderDictionaryGrid() {
+            const container = document.getElementById('dictionaryEditorGrid');
+            container.innerHTML = '';
+
+            Object.entries(projectDictionary).forEach(([key, value]) => {
+                const row = document.createElement('div');
+                row.className = 'dict-entry-row';
+                row.innerHTML = `
+                    <span class="key-token" style="font-family:monospace; font-weight:bold;">${key}</span>
+                    <input type="text" value="${value}" onchange="updateDictionaryMapping('${key}', this.value)" style="padding:4px; font-size:0.8rem;">
+                    <button class="action sec" style="padding:4px 8px; color:var(--danger); min-width:auto;" onclick="deleteDictionaryMapping('${key}')">✖</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function addDictionaryMapping() {
+            const key = document.getElementById('newDictKey').value.trim();
+            const val = document.getElementById('newDictVal').value.trim();
+            if (!key || !val) return;
+
+            projectDictionary[key] = val;
+            document.getElementById('newDictKey').value = '';
+            document.getElementById('newDictVal').value = '';
+            refreshSemanticDashboard();
+        }
+
+        function updateDictionaryMapping(key, newVal) {
+            projectDictionary[key].value = newVal.trim();
+            executeInterlinearSubstitution();
+            updateRecoveryBox();
+        }
+
+        function deleteDictionaryMapping(key) {
+            delete projectDictionary[key];
+            refreshSemanticDashboard();
+        }
+
+        function updateRecoveryBox() {
+            document.getElementById('recoveryJSONBox').value = JSON.stringify(projectDictionary);
+        }
+
+        function copyRecoverySnippet() {
+            const box = document.getElementById('recoveryJSONBox');
+            box.select();
+            navigator.clipboard.writeText(box.value);
+        }
+
+        function loadRecoverySnippet() {
+            try {
+                const payload = JSON.parse(document.getElementById('recoveryJSONBox').value);
+                if (typeof payload === 'object' && payload !== null) {
+                    projectDictionary = payload;
+                    refreshSemanticDashboard();
+                    alert("Typology configuration recovered.");
+                }
+            } catch(e) { alert("Invalid structure format."); }
+        }
+
+        function segmentWordToken(word) {
+            let remainder = word;
+            let slices = [];
+            const sortedKeys = Object.keys(projectDictionary).sort((a,b) => b.length - a.length);
+
+            while (remainder.length > 0) {
+                let matchFound = false;
+                for (let key of sortedKeys) {
+                    if (remainder.startsWith(key)) {
+                        slices.push({ type: 'match', text: projectDictionary[key] });
+                        remainder = remainder.substring(key.length);
+                        matchFound = true;
+                        break;
+                    }
+                }
+                if (!matchFound) {
+                    slices.push({ type: 'raw', text: remainder.charAt(0) });
+                    remainder = remainder.substring(1);
+                }
+            }
+
+            let optimizedSlices = [];
+            slices.forEach(s => {
+                if (optimizedSlices.length > 0 && optimizedSlices[optimizedSlices.length - 1].type === 'raw' && s.type === 'raw') {
+                    optimizedSlices[optimizedSlices.length - 1].text += s.text;
+                } else {
+                    optimizedSlices.push(s);
+                }
+            });
+            return optimizedSlices;
+        }
+
+        function executeInterlinearSubstitution() {
+            const container = document.getElementById('interlinearContainer');
+            container.innerHTML = '';
+
+            corpusTokens.forEach(tokenObj => {
+                const word = tokenObj.word;
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'interlinear-row';
+
+                const leftCol = document.createElement('div');
+                leftCol.className = 'word-unit';
+                leftCol.style.color = 'var(--text-muted)';
+                leftCol.textContent = word;
+
+                const rightCol = document.createElement('div');
+                rightCol.className = 'word-unit';
+
+                const structuralSlices = segmentWordToken(word);
+
+                structuralSlices.forEach(slice => {
+                    const span = document.createElement('span');
+                    span.className = `chip ${slice.type}`;
+                    span.textContent = slice.text;
+                    rightCol.appendChild(span);
+                });
+
+                rowDiv.appendChild(leftCol);
+                rowDiv.appendChild(rightCol);
+                container.appendChild(rowDiv);
+            });
+        }
+
+        // CORRECTED ENGINE FUNCTION: Organizes defined entries serially as a standalone framework catalog
+        function renderMasterTopologyLedger() {
+            const container = document.getElementById('topologyLedgerContainer');
+            container.innerHTML = '';
+
+            const searchFilter = document.getElementById('ledgerSearchInput').value.toLowerCase();
+
+            // Transform user-defined dictionary into a serial list ordered by the Typology code assignment (A1, Cat_1, etc.)
+            let organizedSchema = Object.entries(projectDictionary)
+                .map(([glyph, code]) => ({ glyph: glyph, code: code }))
+                .filter(item => item.code.toLowerCase().includes(searchFilter) || item.glyph.toLowerCase().includes(searchFilter));
+
+            // Sort serially by structural code string value
+            organizedSchema.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
+
+            if (organizedSchema.length === 0) {
+                container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px 0;">No matching taxonomy records found in the dictionary system.</div>`;
+                return;
+            }
+
+            organizedSchema.forEach(item => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'interlinear-row';
+
+                const leftCol = document.createElement('div');
+                leftCol.className = 'word-unit';
+                leftCol.innerHTML = `Code Target: <span class="chip match" style="margin-left:8px;">${item.code}</span>`;
+
+                const rightCol = document.createElement('div');
+                rightCol.className = 'word-unit';
+                rightCol.innerHTML = `Syllable Glyph Slice: <span class="chip raw" style="margin-left:8px; font-weight:bold;">${item.glyph}</span>`;
+
+                rowDiv.appendChild(leftCol);
+                rowDiv.appendChild(rightCol);
+                container.appendChild(rowDiv);
+            });
+        }
+
+        function exportProject() {
+            const bundle = { corpus: corpusTokens, dictionary: projectDictionary, rawText: document.getElementById('corpusInput').value };
+            const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `voynich_typology_state.json`;
+            a.click();
+        }
+
+        function loadProject(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const state = JSON.parse(e.target.result);
+                    if(state.rawText) document.getElementById('corpusInput').value = state.rawText;
+                    if(state.corpus) corpusTokens = state.corpus;
+                    if(state.dictionary) projectDictionary = state.dictionary;
+                    runStructuralPipeline();
+                    refreshSemanticDashboard();
+                } catch(err) { alert('Invalid file payload.'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function sortTable(tableId, colIdx, isNumeric = false) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const direction = table.dataset.sortDir === 'asc' ? -1 : 1;
+            table.dataset.sortDir = direction === 1 ? 'asc' : 'desc';
+
+            rows.sort((a, b) => {
+                let cellA = a.children[colIdx].textContent.trim();
+                let cellB = b.children[colIdx].textContent.trim();
+                return isNumeric ? (parseFloat(cellA) - parseFloat(cellB)) * direction : cellA.localeCompare(cellB) * direction;
+            });
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+</body>
+</html>

@@ -109,7 +109,7 @@
             box-sizing: border-box;
             outline: none;
         }
-        textarea { height: 100px; resize: vertical; }
+        textarea { height: 110px; resize: vertical; }
 
         .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -187,6 +187,13 @@
         .metric-val { font-size: 1.2rem; font-weight: bold; color: var(--structural); }
         .metric-val.sem { color: var(--semantic); }
         .metric-lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+        
+        .sanitizer-badge {
+            font-size: 0.75rem;
+            color: var(--semantic);
+            font-family: monospace;
+            margin-top: -4px;
+        }
     </style>
 </head>
 <body>
@@ -207,10 +214,15 @@
         </div>
     </div>
 
+    <!-- PANEL 1: STRUCTURAL ANALYZER -->
     <div id="structuralPanel" class="panel-container active">
         <div class="card">
-            <h2>Raw Corpus Ingestion</h2>
-            <textarea id="corpusInput" placeholder="Paste clean, space-separated tokens here..."></textarea>
+            <h2>Raw Corpus Ingestion & Auto-Sanitizer</h2>
+            <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">
+                Paste dirty text here. The sanitizer instantly resolves brackets [cth:oto] &rarr; cth, strips curly braces {c'y} &rarr; cy, removes metadata and dot connectors.
+            </p>
+            <textarea id="corpusInput" placeholder="Paste raw text here... e.g., <f1r.1> dcheol [cth:oto]res {c'y} daiin.qokain"></textarea>
+            <div id="sanitizerFeedback" class="sanitizer-badge"></div>
             <div class="btn-row">
                 <select id="sectionTagSelect" style="flex: 1;">
                     <option value="Unknown">Section: Unknown</option>
@@ -218,7 +230,7 @@
                     <option value="Balneological">Balneological</option>
                     <option value="Pharmaceutical">Pharmaceutical</option>
                 </select>
-                <button class="action" onclick="runStructuralPipeline()">Parse Morphological Grid</button>
+                <button class="action" onclick="runStructuralPipeline()">Sanitize & Parse Ingestion</button>
             </div>
         </div>
 
@@ -254,6 +266,7 @@
         </div>
     </div>
 
+    <!-- PANEL 2: SEMANTIC HYPOTHESIS TESTER -->
     <div id="semanticPanel" class="panel-container">
         <div class="card">
             <h2>Abstract Typology Dictionary Editor</h2>
@@ -282,6 +295,7 @@
         </div>
     </div>
 
+    <!-- PANEL 3: TYPOLOGY LEDGER -->
     <div id="topologyPanel" class="panel-container">
         <div class="card">
             <h2>Master Typology Schema</h2>
@@ -295,8 +309,7 @@
 
         <div class="card">
             <h2>Serial Classification Ledger Matrix</h2>
-            <div class="interlinear-scroll-area" id="topologyLedgerContainer">
-                </div>
+            <div class="interlinear-scroll-area" id="topologyLedgerContainer"></div>
         </div>
     </div>
 
@@ -305,8 +318,8 @@
         let clusterDatabase = {};
         
         let projectDictionary = {
-            'd': 'Cat_1',
-            'qo': 'Cat_2',
+            'd': '01',
+            'qo': '02',
             'an': 'A1',
             'ain': 'A2',
             'aiin': 'A3',
@@ -323,13 +336,46 @@
             if (panelId === 'topologyPanel') renderMasterTopologyLedger();
         }
 
+        // Upgraded Sequential Deep-Sanitizer Engine Subroutine
+        function cleanTranscriptionInput(rawText) {
+            let text = rawText;
+
+            // Step 1: Remove all comment rows starting with '#'
+            text = text.replace(/^#.*$/gm, '');
+
+            // Step 2: Strip out locator codes enclosed inside angle brackets <...>
+            text = text.replace(/<[^>]+>/g, ' ');
+
+            // Step 3: CRITICAL FIX - Resolve choice alternates [cth:oto] keeping only the first element
+            text = text.replace(/\[([a-zA-Z0-9]+):[^\]]+\]/g, '$1');
+
+            // Step 4: CRITICAL FIX - Strip curly braces and internal separators from ligatures like {c'y} -> cy
+            text = text.replace(/\{([^}]+)\}/g, function(match, inner) {
+                return inner.replace(/['`\-_]/g, ''); 
+            });
+
+            // Step 5: Clean remaining rogue non-alphabet characters and punctuation
+            text = text.replace(/[\?,;!%&*=\-+_()]/g, ' ');
+
+            // Step 6: Flatten intra-word connection dots into standard uniform spacing
+            text = text.replace(/\./g, ' ');
+
+            return text;
+        }
+
         function runStructuralPipeline() {
             const rawText = document.getElementById('corpusInput').value;
             const currentSection = document.getElementById('sectionTagSelect').value;
             if (!rawText.trim()) return;
 
-            const rawWords = rawText.split(/\s+/).filter(w => w.length > 0);
+            // Execute the deep-clean sequence pass
+            const sanitizedText = cleanTranscriptionInput(rawText);
+            
+            const rawWords = sanitizedText.split(/\s+/).filter(w => w.length > 0);
             corpusTokens = rawWords.map(w => ({ word: w, section: currentSection }));
+
+            // Update user feedback area
+            document.getElementById('sanitizerFeedback').textContent = `✓ Cleared noise footprints. Ingested ${corpusTokens.length} clean systematic tokens.`;
 
             document.getElementById('statTotalWords').textContent = corpusTokens.length;
             const uniqueSet = new Set(corpusTokens.map(t => t.word));
@@ -424,7 +470,7 @@
         }
 
         function updateDictionaryMapping(key, newVal) {
-            projectDictionary[key].value = newVal.trim();
+            projectDictionary[key] = newVal.trim();
             executeInterlinearSubstitution();
             updateRecoveryBox();
         }
@@ -519,19 +565,16 @@
             });
         }
 
-        // CORRECTED ENGINE FUNCTION: Organizes defined entries serially as a standalone framework catalog
         function renderMasterTopologyLedger() {
             const container = document.getElementById('topologyLedgerContainer');
             container.innerHTML = '';
 
             const searchFilter = document.getElementById('ledgerSearchInput').value.toLowerCase();
 
-            // Transform user-defined dictionary into a serial list ordered by the Typology code assignment (A1, Cat_1, etc.)
             let organizedSchema = Object.entries(projectDictionary)
                 .map(([glyph, code]) => ({ glyph: glyph, code: code }))
                 .filter(item => item.code.toLowerCase().includes(searchFilter) || item.glyph.toLowerCase().includes(searchFilter));
 
-            // Sort serially by structural code string value
             organizedSchema.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
 
             if (organizedSchema.length === 0) {
